@@ -1,0 +1,72 @@
+name: Fetch award logos (one-off)
+
+on:
+  push:
+    branches: ['claude/fetch-logos']
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download logo candidates
+        run: |
+          set -x
+          mkdir -p _logos
+          cd _logos
+          UA="Mozilla/5.0 (portfolio logo fetch; github.com/marknatdev)"
+          # Wikipedia infobox images (any licence) for each organiser
+          for wiki in th en; do
+            for q in "สวทช" "สอวน" "มหาวิทยาลัยราชภัฏสุราษฎร์ธานี" "National Science and Technology Development Agency" "Suratthani Rajabhat University" "Promotion of Academic Olympiad and Development of Science Education Foundation" "Young Scientist Competition Thailand"; do
+              curl -sS -A "$UA" -G "https://$wiki.wikipedia.org/w/api.php" \
+                --data-urlencode action=query --data-urlencode format=json \
+                --data-urlencode generator=search --data-urlencode "gsrsearch=$q" --data-urlencode gsrlimit=3 \
+                --data-urlencode prop=pageimages --data-urlencode "piprop=original|name" --data-urlencode pilicense=any \
+                >> "wiki-$wiki.jsonl" || true
+              echo >> "wiki-$wiki.jsonl"
+            done
+          done
+          python3 - <<'PY'
+          import json, re, subprocess, os
+          seen = set()
+          for f in ["wiki-th.jsonl", "wiki-en.jsonl"]:
+              for line in open(f, encoding="utf-8"):
+                  line = line.strip()
+                  if not line: continue
+                  try: d = json.loads(line)
+                  except Exception: continue
+                  for p in d.get("query", {}).get("pages", {}).values():
+                      o = p.get("original", {}).get("source")
+                      if not o or o in seen: continue
+                      seen.add(o)
+                      name = re.sub(r"[^A-Za-z0-9._-]", "_", f.split("-")[1].split(".")[0] + "__" + p["title"])[:80] + os.path.splitext(o)[1]
+                      print(p["title"], "->", o, "->", name, flush=True)
+                      subprocess.run(["curl", "-sS", "-L", "-A", "Mozilla/5.0", "-o", name, o])
+                      open("index.txt", "a", encoding="utf-8").write(f"{name}\t{p['title']}\t{o}\n")
+          PY
+          # Logos linked from the organisers' own home pages
+          for site in https://www.posn.or.th/ https://www.nstda.or.th/ysc/ https://www.nstda.or.th/ https://www.sru.ac.th/; do
+            host=$(echo "$site" | sed -E 's#https?://##; s#/$##; s#/#_#g')
+            curl -sS -L -A "$UA" --max-time 30 "$site" -o "page-$host.html" || true
+            grep -oiE '<img[^>]+>' "page-$host.html" | grep -iE 'logo|ysc|posn|nstda|sru' | head -15 > "imgs-$host.txt" || true
+            grep -oiE 'src="[^"]+"' "imgs-$host.txt" | sed -E 's/src="//; s/"$//' | while read -r src; do
+              case "$src" in http*) url="$src";; //*) url="https:$src";; /*) url="$(echo "$site" | grep -oE 'https://[^/]+')$src";; *) url="$site$src";; esac
+              fn="site-$host-$(basename "${url%%\?*}")"
+              curl -sS -L -A "$UA" --max-time 30 -o "$fn" "$url" || true
+              printf '%s\t%s\t%s\n' "$fn" "$site" "$url" >> index.txt
+            done
+            rm -f "page-$host.html"
+          done
+          ls -la
+
+      - name: Commit results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add _logos
+          git commit -m "chore: logo candidates" || echo "nothing to commit"
+          git push origin HEAD:claude/fetch-logos
