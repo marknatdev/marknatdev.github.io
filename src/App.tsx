@@ -33,8 +33,8 @@ interface Achievement {
   organizer: { en: string; th: string };
   date: { en: string; th: string };
   detail: { en: string; th: string };
-  /** Photo in public/achievements/; a placeholder tile shows until it is added. */
-  image?: string;
+  /** Organiser logo in public/achievements/; an award tile shows when there is none. */
+  logo?: string;
   featured?: boolean;
 }
 
@@ -178,6 +178,7 @@ export function App() {
         th: 'มูลนิธิ สอวน. · โรงเรียนสตรีภูเก็ต',
       },
       date: { en: '1–17 Oct 2026', th: '1–17 ต.ค. 2569' },
+      logo: 'achievements/posn.svg',
       detail: {
         en: '17 days of training in mathematics and C/C++ programming.',
         th: 'อบรมคณิตศาสตร์และการเขียนโปรแกรม C/C++ เป็นเวลา 17 วัน',
@@ -195,6 +196,7 @@ export function App() {
         th: 'สัปดาห์วิทยาศาสตร์แห่งชาติ 2569 · มหาวิทยาลัยราชภัฏสุราษฎร์ธานี',
       },
       date: { en: '18 Aug 2026', th: '18 ส.ค. 2569' },
+      logo: 'achievements/sru.png',
       detail: {
         en: 'Entered "A Location-Tracking Safety Helmet with AI Emergency Alerts for Improved Safety" on behalf of Saparachinee Trang School.',
         th: 'ผลงาน "หมวกนิรภัยติดตามตำแหน่งพร้อมระบบแจ้งเตือนเหตุฉุกเฉินด้วย AI เพื่อยกระดับความปลอดภัย" ส่งในนามโรงเรียนสภาราชินี จังหวัดตรัง',
@@ -209,6 +211,7 @@ export function App() {
       result: { en: 'Proposal Round Qualifier', th: 'ผ่านรอบข้อเสนอโครงงาน' },
       organizer: { en: 'NSTDA', th: 'สวทช. (NSTDA)' },
       date: { en: 'Oct 2026', th: 'ต.ค. 2569' },
+      logo: 'achievements/nstda.svg',
       detail: {
         en: 'Project proposal accepted; moving on to develop the project in the next round.',
         th: 'ข้อเสนอโครงงานผ่านการพิจารณา ได้ไปพัฒนาโครงงานต่อในรอบถัดไป',
@@ -217,13 +220,15 @@ export function App() {
   ];
 
   const renderAchievementPhoto = (a: Achievement, dark: boolean) =>
-    a.image ? (
-      <img
-        src={a.image}
-        alt={a.title[lang]}
-        loading="lazy"
-        className="h-full w-full object-cover"
-      />
+    a.logo ? (
+      <div className="flex h-full w-full items-center justify-center bg-[#fafaf9] p-[12%]">
+        <img
+          src={a.logo}
+          alt={`${a.organizer[lang].split(' · ')[0]} logo`}
+          loading="lazy"
+          className="h-full w-full object-contain"
+        />
+      </div>
     ) : (
       <div
         className={`flex h-full w-full flex-col items-center justify-center gap-2 ${
