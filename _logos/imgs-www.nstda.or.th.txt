@@ -1,0 +1,1 @@
+<img id="img1" class="img" src="https://waa.inter.nstda.or.th/stks/landing_page/images/landing-page.jpg"  alt="ทรงพระเจริญ" usemap="#Map">
